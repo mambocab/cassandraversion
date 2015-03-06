@@ -20,32 +20,38 @@ except:
 
 def main():
     version_arg = get_version_arg(sys.argv)
-    cassandra_url = 'http://archive.apache.org/dist/cassandra/'
-    page_contents = str(urlopen(cassandra_url).read())
-
-    versions = get_versions_from_page(page_contents)
+    versions = get_versions(get_hrefs_from_page(get_page_contents()))
 
     if version_arg is not None:
-        sys.exit(0 if version_arg in set(versions) else 1)
+        sys.exit(0 if version_arg in versions else 1)
 
     for v in versions:
         print(v)
 
 
-def get_versions_from_page(p):
+def get_page_contents():
+    cassandra_url = 'http://archive.apache.org/dist/cassandra/'
+    return str(urlopen(cassandra_url).read())
+
+
+def get_versions(strs):
+    return filter(lambda o: o is not None, map(to_version, strs))
+
+
+def get_hrefs_from_page(p):
     parser = HrefExtractionParser()
     parser.feed(p)
-    for x in map(to_version_number, parser.result):
-        if x is not None:
-            yield x
+    return parser.result
 
 
-def to_version_number(s):
+def to_version(s):
     if s.endswith('/'):
         s = s[:-1]
-    if all(c == '.' or c.isdigit() for c in s):
-        return s
-    return None
+    return s if valid_version(s) else None
+
+
+def valid_version(s):
+    return all(c == '.' or c.isdigit() for c in s)
 
 
 class HrefExtractionParser(HTMLParser):
